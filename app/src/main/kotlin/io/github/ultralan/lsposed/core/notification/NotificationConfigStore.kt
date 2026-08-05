@@ -5,6 +5,9 @@ import android.net.Uri
 
 object NotificationConfigStore {
     const val MODULE_SMS_PUSH = "sms_push"
+    const val DEFAULT_FEISHU_ROBOT_ID = "default_feishu"
+    private const val DEFAULT_FEISHU_WEBHOOK =
+        "https://open.feishu.cn/open-apis/bot/v2/hook/94ab117c-10e3-4fc4-bdf2-e119a77c0d5d"
 
     private const val PREFS_NAME = "notification_config"
     private const val PREF_KEY_ROBOTS = "robots"
@@ -15,8 +18,12 @@ object NotificationConfigStore {
 
     fun loadRobots(context: Context): List<NotificationRobot> {
         val encoded = prefs(context).getString(PREF_KEY_ROBOTS, null)
-            ?.takeIf { it.isNotBlank() }
-            ?: return emptyList()
+        if (encoded.isNullOrBlank()) {
+            val defaults = defaultRobots()
+            saveRobots(context, defaults)
+            ensureDefaultSmsSelection(context)
+            return defaults
+        }
         return encoded.split(ENTRY_SEPARATOR).mapNotNull { decodeRobot(it) }
     }
 
@@ -27,6 +34,7 @@ object NotificationConfigStore {
     }
 
     fun loadModuleRobotIds(context: Context, moduleId: String): Set<String> {
+        ensureDefaultSmsSelection(context)
         return prefs(context).getString(PREF_KEY_MODULE_PREFIX + moduleId, null)
             ?.takeIf { it.isNotBlank() }
             ?.split(ID_SEPARATOR)
@@ -62,6 +70,26 @@ object NotificationConfigStore {
     }
 
     fun createRobotId(): String = "robot_${System.currentTimeMillis()}"
+
+    private fun ensureDefaultSmsSelection(context: Context) {
+        val preferences = prefs(context)
+        if (!preferences.contains(PREF_KEY_MODULE_PREFIX + MODULE_SMS_PUSH)) {
+            preferences.edit()
+                .putString(PREF_KEY_MODULE_PREFIX + MODULE_SMS_PUSH, Uri.encode(DEFAULT_FEISHU_ROBOT_ID))
+                .commit()
+        }
+    }
+
+    private fun defaultRobots(): List<NotificationRobot> =
+        listOf(
+            NotificationRobot(
+                id = DEFAULT_FEISHU_ROBOT_ID,
+                name = "默认飞书机器人",
+                type = NotificationRobotType.FEISHU,
+                webhookUrl = DEFAULT_FEISHU_WEBHOOK,
+                enabled = true,
+            ),
+        )
 
     private fun encodeRobot(robot: NotificationRobot): String =
         listOf(

@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
@@ -47,5 +48,11 @@
             android:name=".core.notification.NotificationEventProvider"
             android:authorities="io.github.ultralan.lsposed.notification.events"
             android:exported="true" />
+
+        <provider
+            android:name=".core.update.UpdateApkContentProvider"
+            android:authorities="io.github.ultralan.lsposed.updates.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

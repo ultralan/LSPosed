@@ -4,8 +4,10 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
 import org.junit.runner.RunWith
+import org.junit.Before
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import io.github.ultralan.lsposed.core.ModuleLogStore
 import io.github.ultralan.lsposed.core.notification.NotificationConfigStore
 import io.github.ultralan.lsposed.features.powervoice.PowerVoiceConfig
@@ -16,6 +18,11 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [34])
 class MainActivityTest {
+    @Before
+    fun resetNotificationConfig() {
+        NotificationConfigStore.clear(RuntimeEnvironment.getApplication())
+    }
+
     @Test
     fun `home page shows module and log subpage entries`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
@@ -28,6 +35,22 @@ class MainActivityTest {
         assertTrue(text.contains("短信拦截推送"))
         assertTrue(text.contains("通知服务"))
         assertTrue(text.contains("运行日志"))
+        assertTrue(text.contains("应用更新"))
+    }
+
+    @Test
+    fun `clicking update entry opens update subpage`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java)
+            .setup()
+            .get()
+
+        activity.window.decorView.findButtons()
+            .first { it.text.contains("应用更新") }
+            .performClick()
+
+        val text = activity.window.decorView.visibleText()
+        assertTrue(text.contains("当前版本"))
+        assertTrue(text.contains("检查更新"))
     }
 
     @Test
@@ -76,7 +99,7 @@ class MainActivityTest {
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("短信 Hook"))
         assertTrue(text.contains("com.android.phone"))
-        assertTrue(text.contains("请先在通知服务中新增飞书机器人"))
+        assertTrue(text.contains("默认飞书机器人"))
     }
 
     @Test
@@ -84,28 +107,15 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        NotificationConfigStore.saveRobots(
-            activity,
-            listOf(
-                io.github.ultralan.lsposed.core.notification.NotificationRobot(
-                    id = "test_feishu",
-                    name = "测试飞书机器人",
-                    type = io.github.ultralan.lsposed.core.notification.NotificationRobotType.FEISHU,
-                    webhookUrl = "https://example.com/webhook",
-                    enabled = true,
-                ),
-            ),
-        )
-
         activity.window.decorView.findButtons()
             .first { it.text.contains("短信拦截推送") }
             .performClick()
         activity.window.decorView.findCheckBoxes()
-            .first { it.text.contains("测试飞书机器人") }
+            .first { it.text.contains("默认飞书机器人") }
             .performClick()
 
         assertEquals(
-            setOf("test_feishu"),
+            emptySet(),
             NotificationConfigStore.loadModuleRobotIds(activity, NotificationConfigStore.MODULE_SMS_PUSH),
         )
     }
@@ -122,7 +132,7 @@ class MainActivityTest {
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("飞书机器人"))
-        assertTrue(text.contains("暂无通知机器人"))
+        assertTrue(text.contains("默认飞书机器人"))
         assertTrue(text.contains("新增飞书机器人"))
     }
 

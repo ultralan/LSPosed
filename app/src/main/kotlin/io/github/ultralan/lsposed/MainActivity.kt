@@ -1,8 +1,11 @@
 package io.github.ultralan.lsposed
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -13,6 +16,10 @@ import io.github.ultralan.lsposed.core.ModuleLogStore
 import io.github.ultralan.lsposed.core.notification.NotificationConfigStore
 import io.github.ultralan.lsposed.core.notification.NotificationRobot
 import io.github.ultralan.lsposed.core.notification.NotificationRobotType
+import io.github.ultralan.lsposed.core.update.AppUpdateClient
+import io.github.ultralan.lsposed.core.update.AppVersion
+import io.github.ultralan.lsposed.core.update.GitHubRelease
+import io.github.ultralan.lsposed.core.update.UpdateApkContentProvider
 import io.github.ultralan.lsposed.features.powervoice.ReadablePreferences
 import io.github.ultralan.lsposed.features.powervoice.TargetProviderStore
 import io.github.ultralan.lsposed.features.powervoice.VoiceAssistantProvider
@@ -25,14 +32,26 @@ class MainActivity : Activity() {
         SMS_PUSH,
         NOTIFICATION,
         LOGS,
+        UPDATE,
     }
 
     private var currentScreen = Screen.HOME
+    private var updateStatus = "通过 GitHub Releases 获取最新正式版本。"
+    private var availableRelease: GitHubRelease? = null
+    private var pendingInstallPermission = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ReadablePreferences.makeTargetProviderPreferencesReadable(this)
         renderHome()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (pendingInstallPermission && canInstallPackages()) {
+            pendingInstallPermission = false
+            launchInstaller()
+        }
     }
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
@@ -68,6 +87,11 @@ class MainActivity : Activity() {
                 summary = "最近 ${ModuleLogStore.load(this@MainActivity).size} 条模块记录",
                 actionText = "查看运行日志",
             ) { renderLogs() }
+            addEntry(
+                title = "应用更新",
+                summary = "当前版本：${currentVersionName()}",
+                actionText = "检查应用更新",
+            ) { renderUpdate() }
         })
     }
 
@@ -141,6 +165,100 @@ class MainActivity : Activity() {
                 }
             }
         })
+    }
+
+    private fun renderUpdate() {
+        currentScreen = Screen.UPDATE
+        setContentView(page {
+            addHeader("应用更新", "GitHub Releases")
+            addStatus("当前版本：${currentVersionName()}")
+            addBodyText(updateStatus)
+            addButton("检查更新") { checkForUpdate() }
+            availableRelease?.let { release ->
+                addStatus("可用版本：${release.tagName}")
+                if (release.releaseNotes.isNotBlank()) {
+                    addBodyText(release.releaseNotes)
+                }
+                addButton("下载并安装 ${release.tagName}") {
+                    downloadAndInstall(release)
+                }
+            }
+        })
+    }
+
+    private fun checkForUpdate() {
+        availableRelease = null
+        updateStatus = "正在检查 GitHub 最新版本……"
+        renderUpdate()
+        val currentVersion = currentVersionName()
+        Thread({
+            runCatching { AppUpdateClient.fetchLatestRelease() }
+                .onSuccess { release ->
+                    runOnUiThread {
+                        if (AppVersion.isNewer(release.tagName, currentVersion)) {
+                            availableRelease = release
+                            updateStatus = "发现新版本，可以直接下载并进入系统安装。"
+                        } else {
+                            updateStatus = "当前已经是最新版本。"
+                        }
+                        renderUpdate()
+                    }
+                }
+                .onFailure { error ->
+                    runOnUiThread {
+                        updateStatus = "检查更新失败：${error.message ?: error.javaClass.simpleName}"
+                        renderUpdate()
+                    }
+                }
+        }, "LSPosedUpdateChecker").start()
+    }
+
+    private fun downloadAndInstall(release: GitHubRelease) {
+        updateStatus = "正在下载并校验 ${release.tagName}……"
+        renderUpdate()
+        Thread({
+            runCatching { AppUpdateClient.downloadAndVerify(this, release) }
+                .onSuccess {
+                    runOnUiThread {
+                        updateStatus = "更新包校验通过，准备进入系统安装。"
+                        renderUpdate()
+                        requestInstallPermissionOrLaunch()
+                    }
+                }
+                .onFailure { error ->
+                    runOnUiThread {
+                        updateStatus = "下载更新失败：${error.message ?: error.javaClass.simpleName}"
+                        renderUpdate()
+                    }
+                }
+        }, "LSPosedUpdateDownloader").start()
+    }
+
+    private fun requestInstallPermissionOrLaunch() {
+        if (!canInstallPackages()) {
+            pendingInstallPermission = true
+            updateStatus = "请允许 LSPosed 安装未知应用，返回后将继续安装。"
+            renderUpdate()
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+            return
+        }
+        launchInstaller()
+    }
+
+    private fun canInstallPackages(): Boolean = packageManager.canRequestPackageInstalls()
+
+    private fun launchInstaller() {
+        startActivity(
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(UpdateApkContentProvider.URI, UpdateApkContentProvider.APK_MIME_TYPE)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
     }
 
     private fun page(build: LinearLayout.() -> Unit): ScrollView {
@@ -330,6 +448,10 @@ class MainActivity : Activity() {
         TargetProviderStore.load(this)
             ?.let { VoiceAssistantProviders.byId(it) }
             ?: VoiceAssistantProviders.defaultProvider
+
+    @Suppress("DEPRECATION")
+    private fun currentVersionName(): String =
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "未知"
 
     private fun spacedParams(bottomMargin: Int): LinearLayout.LayoutParams =
         LinearLayout.LayoutParams(
