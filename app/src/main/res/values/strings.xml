@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">LSPosed</string>
+    <string name="xposed_description">LSPosed 功能集合，当前包含电源键语音和短信推送功能</string>
+</resources>

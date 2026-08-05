@@ -1,0 +1,51 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="@string/xposed_description" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
+        <meta-data
+            android:name="xposedscope"
+            android:value="android;com.android.phone;com.larus.nova;com.moonshot.kimichat;com.aliyun.tongyi;com.baidu.newapp;com.iflytek.spark;com.tencent.hunyuan.app.chat;com.zhipuai.qingyan;com.deepseek.chat;com.xproducer.yingshiai" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name=".features.powervoice.TargetProviderContentProvider"
+            android:authorities="io.github.ultralan.lsposed.powervoice.targetprovider"
+            android:exported="true" />
+
+        <provider
+            android:name=".features.powervoice.LearnedVoiceCallIntentContentProvider"
+            android:authorities="io.github.ultralan.lsposed.powervoice.learnedintent"
+            android:exported="true" />
+
+        <provider
+            android:name=".core.ModuleLogContentProvider"
+            android:authorities="io.github.ultralan.lsposed.logs"
+            android:exported="true" />
+
+        <provider
+            android:name=".core.notification.NotificationEventProvider"
+            android:authorities="io.github.ultralan.lsposed.notification.events"
+            android:exported="true" />
+    </application>
+</manifest>

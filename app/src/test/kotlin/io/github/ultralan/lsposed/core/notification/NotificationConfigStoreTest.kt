@@ -1,0 +1,41 @@
+package io.github.ultralan.lsposed.core.notification
+
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+@RunWith(RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [34])
+class NotificationConfigStoreTest {
+    @Test
+    fun `fresh install does not embed a default notification robot`() {
+        val context = RuntimeEnvironment.getApplication()
+        NotificationConfigStore.clear(context)
+
+        val robots = NotificationConfigStore.loadRobots(context)
+        val selectedIds = NotificationConfigStore.loadModuleRobotIds(context, NotificationConfigStore.MODULE_SMS_PUSH)
+
+        assertEquals(emptyList(), robots)
+        assertEquals(emptySet(), selectedIds)
+    }
+
+    @Test
+    fun `module robot selection is saved independently from robot list`() {
+        val context = RuntimeEnvironment.getApplication()
+        NotificationConfigStore.clear(context)
+        NotificationConfigStore.saveRobots(
+            context,
+            listOf(
+                NotificationRobot("a", "飞书 A", NotificationRobotType.FEISHU, "https://example.com/a", enabled = true),
+                NotificationRobot("b", "飞书 B", NotificationRobotType.FEISHU, "https://example.com/b", enabled = true),
+            ),
+        )
+
+        NotificationConfigStore.saveModuleRobotIds(context, NotificationConfigStore.MODULE_SMS_PUSH, setOf("b"))
+
+        assertEquals(setOf("b"), NotificationConfigStore.loadModuleRobotIds(context, NotificationConfigStore.MODULE_SMS_PUSH))
+        assertEquals(listOf("a", "b"), NotificationConfigStore.loadRobots(context).map { it.id })
+    }
+}

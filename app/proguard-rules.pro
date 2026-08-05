@@ -1,0 +1,2 @@
+-keep class io.github.ultralan.lsposed.** { *; }
+-dontwarn de.robv.android.xposed.**
