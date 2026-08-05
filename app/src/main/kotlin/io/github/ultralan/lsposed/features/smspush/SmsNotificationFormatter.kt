@@ -13,7 +13,7 @@ object SmsNotificationFormatter {
         val verificationCode = SmsCodeExtractor.extract(message.body)
         return SmsNotificationContent(
             source = sender,
-            title = verificationCode?.let { "验证码：$it" } ?: "短信：$sender",
+            title = verificationCode?.let { "验证码：$it" } ?: SmsTitleExtractor.extract(sender, message.body),
             body = message.body,
             copyText = verificationCode,
         )
