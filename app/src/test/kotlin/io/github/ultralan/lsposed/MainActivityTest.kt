@@ -39,6 +39,19 @@ class MainActivityTest {
     }
 
     @Test
+    fun `home page groups controls into module and system sections`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java)
+            .setup()
+            .get()
+
+        val text = activity.window.decorView.visibleText()
+
+        assertTrue(text.contains("模块功能"))
+        assertTrue(text.contains("系统与维护"))
+        assertTrue(text.contains("模块状态"))
+    }
+
+    @Test
     fun `clicking update entry opens update subpage`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()

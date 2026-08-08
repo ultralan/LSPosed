@@ -2,10 +2,14 @@ package io.github.ultralan.lsposed
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -39,9 +43,29 @@ class MainActivity : Activity() {
     private var updateStatus = "通过 GitHub Releases 获取最新正式版本。"
     private var availableRelease: GitHubRelease? = null
     private var pendingInstallPermission = false
+    private val surface = 0xfff9f9ff.toInt()
+    private val surfaceContainer = 0xffeef0f8.toInt()
+    private val surfaceContainerHigh = 0xffe8eaf2.toInt()
+    private val onSurface = 0xff1a1b20.toInt()
+    private val onSurfaceVariant = 0xff44474e.toInt()
+    private val outline = 0xff74777f.toInt()
+    private val primary = 0xff0b57d0.toInt()
+    private val onPrimary = 0xffffffff.toInt()
+    private val primaryContainer = 0xffd7e2ff.toInt()
+    private val onPrimaryContainer = 0xff001a41.toInt()
+    private val secondaryContainer = 0xffd6e3ff.toInt()
+    private val tertiaryContainer = 0xffbdeff0.toInt()
+    private val onTertiaryContainer = 0xff003738.toInt()
+    private val errorColor = 0xffba1a1a.toInt()
+    private val errorContainer = 0xffffdad6.toInt()
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = surface
+        window.navigationBarColor = surface
+        window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         ReadablePreferences.makeTargetProviderPreferencesReadable(this)
         renderHome()
     }
@@ -66,7 +90,8 @@ class MainActivity : Activity() {
     private fun renderHome() {
         currentScreen = Screen.HOME
         setContentView(page {
-            addTitle("LSPosed", "模块设置台")
+            addHomeHeader()
+            addSectionLabel("模块功能")
             addEntry(
                 title = "电源键语音",
                 summary = "当前目标：${selectedProvider().displayName}",
@@ -77,6 +102,7 @@ class MainActivity : Activity() {
                 summary = "已选择 ${NotificationConfigStore.loadModuleRobotIds(this@MainActivity, NotificationConfigStore.MODULE_SMS_PUSH).size} 个通知机器人",
                 actionText = "配置短信拦截推送",
             ) { renderSmsPush() }
+            addSectionLabel("系统与维护")
             addEntry(
                 title = "通知服务",
                 summary = "${NotificationConfigStore.loadRobots(this@MainActivity).count { it.enabled }} 个启用机器人",
@@ -152,8 +178,8 @@ class MainActivity : Activity() {
         setContentView(page {
             addHeader("运行日志", "模块日志")
             val entries = ModuleLogStore.load(this@MainActivity)
-            addButton("刷新") { renderLogs() }
-            addButton("清空日志") {
+            addButton("刷新", ButtonTone.FILLED) { renderLogs() }
+            addButton("清空日志", ButtonTone.OUTLINED) {
                 ModuleLogStore.clear(this@MainActivity)
                 renderLogs()
             }
@@ -173,13 +199,13 @@ class MainActivity : Activity() {
             addHeader("应用更新", "GitHub Releases")
             addStatus("当前版本：${currentVersionName()}")
             addBodyText(updateStatus)
-            addButton("检查更新") { checkForUpdate() }
+            addButton("检查更新", ButtonTone.FILLED) { checkForUpdate() }
             availableRelease?.let { release ->
                 addStatus("可用版本：${release.tagName}")
                 if (release.releaseNotes.isNotBlank()) {
                     addBodyText(release.releaseNotes)
                 }
-                addButton("下载并安装 ${release.tagName}") {
+                addButton("下载并安装 ${release.tagName}", ButtonTone.FILLED) {
                     downloadAndInstall(release)
                 }
             }
@@ -261,34 +287,130 @@ class MainActivity : Activity() {
         )
     }
 
+    private enum class ButtonTone {
+        FILLED,
+        TONAL,
+        OUTLINED,
+    }
+
     private fun page(build: LinearLayout.() -> Unit): ScrollView {
-        val padding = dp(20)
+        val horizontalPadding = dp(20)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
+            setPadding(horizontalPadding, dp(16), horizontalPadding, dp(28))
             build()
         }
-        return ScrollView(this).apply { addView(content) }
+        return ScrollView(this).apply {
+            setBackgroundColor(surface)
+            isFillViewport = true
+            clipToPadding = false
+            addView(content)
+        }
+    }
+
+    private fun LinearLayout.addHomeHeader() {
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            addView(TextView(this@MainActivity).apply {
+                text = getString(R.string.app_monogram)
+                textSize = 15f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(onPrimary)
+                setBackground(roundedShape(primary, 16))
+            }, LinearLayout.LayoutParams(dp(52), dp(52)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), 0, 0, 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.app_name)
+                    textSize = 28f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(onSurface)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.module_console_version, currentVersionName())
+                    textSize = 14f
+                    setTextColor(onSurfaceVariant)
+                    setPadding(0, dp(2), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }, spacedParams(dp(20)))
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setBackground(roundedShape(tertiaryContainer, 12))
+            addView(TextView(this@MainActivity).apply {
+                text = "模块状态"
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(onTertiaryContainer)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(TextView(this@MainActivity).apply {
+                text = "配置已加载"
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(onTertiaryContainer)
+            })
+        }, spacedParams(dp(22)))
     }
 
     private fun LinearLayout.addTitle(title: String, subtitle: String) {
         addView(TextView(this@MainActivity).apply {
             text = title
-            textSize = 24f
+            textSize = 26f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xff111827.toInt())
+            setTextColor(onSurface)
         })
         addView(TextView(this@MainActivity).apply {
             text = subtitle
             textSize = 14f
-            setTextColor(0xff6b7280.toInt())
-            setPadding(0, dp(4), 0, dp(18))
+            setTextColor(onSurfaceVariant)
+            setPadding(0, dp(4), 0, dp(20))
         })
     }
 
     private fun LinearLayout.addHeader(title: String, subtitle: String) {
-        addButton("返回") { renderHome() }
-        addTitle(title, subtitle)
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            addView(TextView(this@MainActivity).apply {
+                text = "‹"
+                textSize = 36f
+                gravity = Gravity.CENTER
+                contentDescription = "返回"
+                setTextColor(onSurface)
+                setBackground(roundedShape(surfaceContainer, 12))
+                setOnClickListener { renderHome() }
+            }, LinearLayout.LayoutParams(dp(44), dp(44)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 24f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(onSurface)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = subtitle
+                    textSize = 13f
+                    setTextColor(onSurfaceVariant)
+                })
+            })
+        }, spacedParams(dp(20)))
+    }
+
+    private fun LinearLayout.addSectionLabel(text: String) {
+        addView(TextView(this@MainActivity).apply {
+            this.text = text
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(onSurfaceVariant)
+            setPadding(dp(4), 0, 0, dp(10))
+        })
     }
 
     private fun LinearLayout.addEntry(
@@ -299,41 +421,56 @@ class MainActivity : Activity() {
     ) {
         addView(LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            setBackgroundColor(0xfff3f4f6.toInt())
+            setPadding(dp(16), dp(16), dp(16), dp(14))
+            contentDescription = "$title，$summary"
+            isClickable = true
+            setBackground(roundedShape(surfaceContainer, 12))
+            setOnClickListener { onClick() }
             addView(TextView(this@MainActivity).apply {
                 text = title
-                textSize = 18f
+                textSize = 17f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(0xff111827.toInt())
+                setTextColor(onSurface)
             })
             addView(TextView(this@MainActivity).apply {
                 text = summary
                 textSize = 14f
-                setTextColor(0xff4b5563.toInt())
-                setPadding(0, dp(4), 0, dp(8))
+                setTextColor(onSurfaceVariant)
+                setPadding(0, dp(5), 0, dp(12))
             })
-            addButton(actionText, onClick)
-        }, spacedParams(dp(10)))
+            addButton(actionText, ButtonTone.TONAL, onClick)
+        }, spacedParams(dp(8)))
     }
 
     private fun LinearLayout.addStatus(text: String) {
-        addView(TextView(this@MainActivity).apply {
-            this.text = text
-            textSize = 16f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xff0f766e.toInt())
-            setPadding(0, dp(8), 0, dp(14))
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setBackground(roundedShape(primaryContainer, 12))
+            addView(TextView(this@MainActivity).apply {
+                this.text = "状态"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(onPrimaryContainer)
+            }, LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(TextView(this@MainActivity).apply {
+                this.text = text
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(onPrimaryContainer)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         })
+        addSpacer(dp(12))
     }
 
     private fun LinearLayout.addBodyText(text: String) {
         addView(TextView(this@MainActivity).apply {
             this.text = text
             textSize = 15f
-            setTextColor(0xff374151.toInt())
-            setLineSpacing(0f, 1.12f)
-            setPadding(0, dp(6), 0, dp(14))
+            setTextColor(onSurfaceVariant)
+            setLineSpacing(0f, 1.2f)
+            setPadding(dp(2), dp(2), dp(2), dp(16))
         })
     }
 
@@ -349,56 +486,71 @@ class MainActivity : Activity() {
                 text = "${robot.name}${if (robot.enabled) "" else "（已禁用）"}"
                 isChecked = robot.id in selected
                 isAllCaps = false
+                textSize = 15f
+                setTextColor(onSurface)
+                buttonTintList = ColorStateList.valueOf(primary)
+                setPadding(dp(4), dp(6), dp(4), dp(6))
                 setOnCheckedChangeListener { _, checked ->
                     val current = NotificationConfigStore.loadModuleRobotIds(this@MainActivity, moduleId)
                     val next = if (checked) current + robot.id else current - robot.id
                     NotificationConfigStore.saveModuleRobotIds(this@MainActivity, moduleId, next)
                     ModuleLogStore.append(this@MainActivity, "通知服务", "短信模块通知目标已更新：${next.size} 个机器人")
                 }
-            }, spacedParams(dp(8)))
+            }, spacedParams(dp(4)))
         }
     }
 
     private fun LinearLayout.addRobotRow(robot: NotificationRobot) {
         addView(LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            setBackgroundColor(0xfff3f4f6.toInt())
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setBackground(roundedShape(surfaceContainer, 12))
             addView(TextView(this@MainActivity).apply {
                 text = robot.name
                 textSize = 17f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(0xff111827.toInt())
+                setTextColor(onSurface)
             })
             addView(TextView(this@MainActivity).apply {
                 text = "${robot.type.name.lowercase()} / ${if (robot.enabled) "启用" else "停用"}"
                 textSize = 13f
-                setTextColor(0xff4b5563.toInt())
+                setTextColor(onSurfaceVariant)
+                setPadding(0, dp(4), 0, dp(10))
             })
-            addButton(if (robot.enabled) "停用" else "启用") {
+            addButton(if (robot.enabled) "停用" else "启用", ButtonTone.TONAL) {
                 NotificationConfigStore.upsertRobot(this@MainActivity, robot.copy(enabled = !robot.enabled))
                 renderNotificationService()
             }
-            addButton("删除") {
+            addButton("删除", ButtonTone.OUTLINED) {
                 NotificationConfigStore.deleteRobot(this@MainActivity, robot.id)
                 renderNotificationService()
             }
-        }, spacedParams(dp(10)))
+        }, spacedParams(dp(8)))
     }
 
     private fun LinearLayout.addFeishuRobotForm() {
         val nameInput = EditText(this@MainActivity).apply {
             hint = "机器人名称"
             setSingleLine(true)
+            textSize = 15f
+            setTextColor(onSurface)
+            setHintTextColor(onSurfaceVariant)
+            setPadding(dp(14), 0, dp(14), 0)
+            setBackground(roundedShape(surfaceContainerHigh, 12))
         }
         val webhookInput = EditText(this@MainActivity).apply {
             hint = "飞书 Webhook URL"
             setSingleLine(true)
+            textSize = 15f
+            setTextColor(onSurface)
+            setHintTextColor(onSurfaceVariant)
+            setPadding(dp(14), 0, dp(14), 0)
+            setBackground(roundedShape(surfaceContainerHigh, 12))
         }
-        addBodyText("新增飞书机器人")
-        addView(nameInput, spacedParams(dp(8)))
-        addView(webhookInput, spacedParams(dp(8)))
-        addButton("保存飞书机器人") {
+        addSectionLabel("新增飞书机器人")
+        addView(nameInput, inputParams())
+        addView(webhookInput, inputParams())
+        addButton("保存飞书机器人", ButtonTone.FILLED) {
             val name = nameInput.text.toString().trim().ifBlank { "飞书机器人" }
             val webhook = webhookInput.text.toString().trim()
             if (webhook.isBlank()) {
@@ -425,18 +577,47 @@ class MainActivity : Activity() {
         addView(TextView(this@MainActivity).apply {
             this.text = text
             textSize = 13f
-            setTextColor(0xff1f2937.toInt())
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            setBackgroundColor(0xfff9fafb.toInt())
+            setTextColor(onSurfaceVariant)
+            setLineSpacing(0f, 1.16f)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setBackground(roundedShape(surfaceContainer, 8))
         }, spacedParams(dp(6)))
     }
 
-    private fun LinearLayout.addButton(text: String, onClick: () -> Unit) {
+    private fun LinearLayout.addButton(
+        text: String,
+        tone: ButtonTone = ButtonTone.TONAL,
+        onClick: () -> Unit,
+    ) {
+        val backgroundColor = when (tone) {
+            ButtonTone.FILLED -> primary
+            ButtonTone.TONAL -> secondaryContainer
+            ButtonTone.OUTLINED -> surface
+        }
+        val textColor = when (tone) {
+            ButtonTone.FILLED -> onPrimary
+            ButtonTone.TONAL -> onPrimaryContainer
+            ButtonTone.OUTLINED -> errorColor
+        }
         addView(Button(this@MainActivity).apply {
             this.text = text
             isAllCaps = false
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            minHeight = dp(48)
+            setTextColor(textColor)
+            background = roundedShape(
+                color = backgroundColor,
+                radius = 12,
+                strokeColor = if (tone == ButtonTone.OUTLINED) errorColor else null,
+            )
             setOnClickListener { onClick() }
         }, spacedParams(dp(8)))
+    }
+
+    private fun LinearLayout.addSpacer(height: Int) {
+        addView(View(this@MainActivity), LinearLayout.LayoutParams(1, height))
     }
 
     private fun saveTargetProvider(provider: VoiceAssistantProvider) {
@@ -459,6 +640,21 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply {
             this.bottomMargin = bottomMargin
+        }
+
+    private fun inputParams(): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(56),
+        ).apply {
+            bottomMargin = dp(8)
+        }
+
+    private fun roundedShape(color: Int, radius: Int, strokeColor: Int? = null): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+            strokeColor?.let { setStroke(dp(1), it) }
         }
 
     private fun dp(value: Int): Int =

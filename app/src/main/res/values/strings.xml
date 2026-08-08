@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">LSPosed</string>
+    <string name="app_monogram">LS</string>
+    <string name="module_console_version">模块控制台  ·  %1$s</string>
     <string name="xposed_description">LSPosed 功能集合，当前包含电源键语音和短信推送功能</string>
 </resources>
