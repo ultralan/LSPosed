@@ -27,6 +27,13 @@ object SmsPushSystemHooks {
                             runCatching {
                                 val context = XposedHelpers.getObjectField(param.thisObject, "mContext") as? android.content.Context
                                 if (context != null) {
+                                    notification.copyText?.let { verificationCode ->
+                                        if (SmsVerificationCodeClipboard.copy(context, verificationCode)) {
+                                            Log.i("验证码已复制到剪贴板")
+                                        } else {
+                                            Log.e("验证码复制到剪贴板失败")
+                                        }
+                                    }
                                     ModuleLogStore.appendThroughProvider(context, "短信", text)
                                     context.contentResolver.insert(
                                         NotificationEventProvider.URI,
