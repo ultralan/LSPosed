@@ -91,33 +91,54 @@ class MainActivity : Activity() {
         currentScreen = Screen.HOME
         setContentView(page {
             addHomeHeader()
-            addSectionLabel("模块功能")
-            addEntry(
-                title = "电源键语音",
-                summary = "当前目标：${selectedProvider().displayName}",
-                actionText = "配置电源键语音",
-            ) { renderPowerVoice() }
-            addEntry(
-                title = "短信拦截推送",
-                summary = "已选择 ${NotificationConfigStore.loadModuleRobotIds(this@MainActivity, NotificationConfigStore.MODULE_SMS_PUSH).size} 个通知机器人",
-                actionText = "配置短信拦截推送",
-            ) { renderSmsPush() }
-            addSectionLabel("系统与维护")
-            addEntry(
-                title = "通知服务",
-                summary = "${NotificationConfigStore.loadRobots(this@MainActivity).count { it.enabled }} 个启用机器人",
-                actionText = "配置通知服务",
-            ) { renderNotificationService() }
-            addEntry(
-                title = "运行日志",
-                summary = "最近 ${ModuleLogStore.load(this@MainActivity).size} 条模块记录",
-                actionText = "查看运行日志",
-            ) { renderLogs() }
-            addEntry(
-                title = "应用更新",
-                summary = "当前版本：${currentVersionName()}",
-                actionText = "检查应用更新",
-            ) { renderUpdate() }
+            addSectionLabel("核心模块")
+            addDashboardRow(
+                DashboardTile(
+                    label = "VOICE",
+                    title = "电源键语音",
+                    summary = "当前目标：${selectedProvider().displayName}",
+                    backgroundColor = primaryContainer,
+                    labelColor = primary,
+                    onClick = { renderPowerVoice() },
+                ),
+                DashboardTile(
+                    label = "SMS",
+                    title = "短信拦截推送",
+                    summary = "已连接 ${NotificationConfigStore.loadModuleRobotIds(this@MainActivity, NotificationConfigStore.MODULE_SMS_PUSH).size} 个通道",
+                    backgroundColor = tertiaryContainer,
+                    labelColor = onTertiaryContainer,
+                    onClick = { renderSmsPush() },
+                ),
+            )
+            addSectionLabel("服务与维护")
+            addWideDashboardTile(
+                DashboardTile(
+                    label = "NOTIFY",
+                    title = "通知服务",
+                    summary = "${NotificationConfigStore.loadRobots(this@MainActivity).count { it.enabled }} 个机器人正在接收模块事件",
+                    backgroundColor = surfaceContainerHigh,
+                    labelColor = onSurfaceVariant,
+                    onClick = { renderNotificationService() },
+                ),
+            )
+            addDashboardRow(
+                DashboardTile(
+                    label = "LOG",
+                    title = "运行日志",
+                    summary = "${ModuleLogStore.load(this@MainActivity).size} 条记录",
+                    backgroundColor = surfaceContainer,
+                    labelColor = onSurfaceVariant,
+                    onClick = { renderLogs() },
+                ),
+                DashboardTile(
+                    label = "UPDATE",
+                    title = "应用更新",
+                    summary = currentVersionName(),
+                    backgroundColor = secondaryContainer,
+                    labelColor = primary,
+                    onClick = { renderUpdate() },
+                ),
+            )
         })
     }
 
@@ -293,6 +314,15 @@ class MainActivity : Activity() {
         OUTLINED,
     }
 
+    private data class DashboardTile(
+        val label: String,
+        val title: String,
+        val summary: String,
+        val backgroundColor: Int,
+        val labelColor: Int,
+        val onClick: () -> Unit,
+    )
+
     private fun page(build: LinearLayout.() -> Unit): ScrollView {
         val horizontalPadding = dp(20)
         val content = LinearLayout(this).apply {
@@ -413,33 +443,75 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun LinearLayout.addEntry(
-        title: String,
-        summary: String,
-        actionText: String,
-        onClick: () -> Unit,
+    private fun LinearLayout.addDashboardRow(
+        left: DashboardTile,
+        right: DashboardTile,
+    ) {
+        addView(LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addDashboardTile(
+                tile = left,
+                layoutParams = LinearLayout.LayoutParams(0, dp(164), 1f).apply {
+                    rightMargin = dp(4)
+                },
+            )
+            addDashboardTile(
+                tile = right,
+                layoutParams = LinearLayout.LayoutParams(0, dp(164), 1f).apply {
+                    leftMargin = dp(4)
+                },
+            )
+        }, spacedParams(dp(8)))
+    }
+
+    private fun LinearLayout.addWideDashboardTile(tile: DashboardTile) {
+        addDashboardTile(
+            tile = tile,
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(132),
+            ).apply {
+                bottomMargin = dp(8)
+            },
+        )
+    }
+
+    private fun LinearLayout.addDashboardTile(
+        tile: DashboardTile,
+        layoutParams: LinearLayout.LayoutParams,
     ) {
         addView(LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(14))
-            contentDescription = "$title，$summary"
+            tag = "dashboard-tile"
+            contentDescription = tile.title
             isClickable = true
-            setBackground(roundedShape(surfaceContainer, 12))
-            setOnClickListener { onClick() }
+            isFocusable = true
+            setPadding(dp(16), dp(15), dp(16), dp(14))
+            setBackground(roundedShape(tile.backgroundColor, 12))
+            setOnClickListener { tile.onClick() }
             addView(TextView(this@MainActivity).apply {
-                text = title
-                textSize = 17f
+                text = tile.label
+                textSize = 11f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onSurface)
+                letterSpacing = 0f
+                setTextColor(tile.labelColor)
             })
             addView(TextView(this@MainActivity).apply {
-                text = summary
-                textSize = 14f
-                setTextColor(onSurfaceVariant)
-                setPadding(0, dp(5), 0, dp(12))
+                text = tile.title
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                maxLines = 2
+                setTextColor(onSurface)
+                setPadding(0, dp(7), 0, 0)
             })
-            addButton(actionText, ButtonTone.TONAL, onClick)
-        }, spacedParams(dp(8)))
+            addView(View(this@MainActivity), LinearLayout.LayoutParams(1, 0, 1f))
+            addView(TextView(this@MainActivity).apply {
+                text = tile.summary
+                textSize = 13f
+                maxLines = 2
+                setTextColor(onSurfaceVariant)
+            })
+        }, layoutParams)
     }
 
     private fun LinearLayout.addStatus(text: String) {

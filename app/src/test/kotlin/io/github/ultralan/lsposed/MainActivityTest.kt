@@ -46,9 +46,21 @@ class MainActivityTest {
 
         val text = activity.window.decorView.visibleText()
 
-        assertTrue(text.contains("模块功能"))
-        assertTrue(text.contains("系统与维护"))
+        assertTrue(text.contains("核心模块"))
+        assertTrue(text.contains("服务与维护"))
         assertTrue(text.contains("模块状态"))
+    }
+
+    @Test
+    fun `home page renders five dashboard tiles`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java)
+            .setup()
+            .get()
+
+        assertEquals(
+            5,
+            activity.window.decorView.findViewsWithTag("dashboard-tile").size,
+        )
     }
 
     @Test
@@ -57,9 +69,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("应用更新") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("应用更新").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("当前版本"))
@@ -72,9 +82,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("电源键语音") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("电源键语音").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("选择目标应用"))
@@ -86,9 +94,7 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("电源键语音") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("电源键语音").performClick()
         val kimiButton = activity.window.decorView.findButtons()
             .first { it.text.contains("Kimi") }
 
@@ -105,9 +111,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("短信拦截推送") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("短信拦截推送").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("短信 Hook"))
@@ -120,9 +124,7 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("短信拦截推送") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("短信拦截推送").performClick()
         activity.window.decorView.findCheckBoxes()
             .first { it.text.contains("默认飞书机器人") }
             .performClick()
@@ -139,9 +141,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("通知服务") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("通知服务").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("飞书机器人"))
@@ -156,9 +156,7 @@ class MainActivityTest {
             .get()
         ModuleLogStore.append(activity, "测试", "短信 Hook 捕获：from=10086 body=验证码 123456")
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("运行日志") }
-            .performClick()
+        activity.window.decorView.findDashboardTile("运行日志").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("模块日志"))
@@ -186,6 +184,21 @@ class MainActivityTest {
         }
         return found
     }
+
+    private fun android.view.View.findViewsWithTag(tag: String): List<android.view.View> {
+        val found = mutableListOf<android.view.View>()
+        if (this.tag == tag) found += this
+        if (this is android.view.ViewGroup) {
+            for (index in 0 until childCount) {
+                found += getChildAt(index).findViewsWithTag(tag)
+            }
+        }
+        return found
+    }
+
+    private fun android.view.View.findDashboardTile(title: String): android.view.View =
+        findViewsWithTag("dashboard-tile")
+            .first { it.contentDescription?.contains(title) == true }
 
     private fun android.view.View.visibleText(): String {
         val found = mutableListOf<String>()
