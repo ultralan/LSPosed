@@ -96,7 +96,7 @@ class MainActivity : Activity() {
                 DashboardTile(
                     label = "VOICE",
                     title = "电源键语音",
-                    summary = "当前目标：${selectedProvider().displayName}",
+                    summary = "当前目标：${selectedProviderLabel()}",
                     backgroundColor = primaryContainer,
                     labelColor = primary,
                     onClick = { renderPowerVoice() },
@@ -151,7 +151,11 @@ class MainActivity : Activity() {
                 在 LSPosed 中勾选 android 和目标 AI 应用后，长按电源键会进入已学习的语音通话入口。
                 """.trimIndent(),
             )
-            addStatus("当前目标：${selectedProvider().displayName}")
+            addStatus("当前目标：${selectedProviderLabel()}")
+            addButton("系统默认（不映射）") {
+                saveSystemDefaultTarget()
+                renderPowerVoice()
+            }
             VoiceAssistantProviders.ALL.forEach { provider ->
                 addButton("${provider.displayName} (${provider.packageName})") {
                     saveTargetProvider(provider)
@@ -696,6 +700,15 @@ class MainActivity : Activity() {
         TargetProviderStore.save(this, provider.id)
         ModuleLogStore.append(this, "电源键语音", "目标应用已切换为 ${provider.displayName}")
     }
+
+    private fun saveSystemDefaultTarget() {
+        TargetProviderStore.save(this, TargetProviderStore.SYSTEM_DEFAULT_ID)
+        ModuleLogStore.append(this, "电源键语音", "已切换为系统默认，不再映射电源键")
+    }
+
+    private fun selectedProviderLabel(): String =
+        if (TargetProviderStore.isSystemDefault(TargetProviderStore.load(this))) "系统默认（不映射）"
+        else selectedProvider().displayName
 
     private fun selectedProvider(): VoiceAssistantProvider =
         TargetProviderStore.load(this)

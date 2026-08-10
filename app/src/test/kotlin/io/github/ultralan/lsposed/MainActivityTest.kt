@@ -106,6 +106,23 @@ class MainActivityTest {
     }
 
     @Test
+    fun `clicking system default saves an unmapped power key target`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java)
+            .setup()
+            .get()
+        activity.window.decorView.findDashboardTile("电源键语音").performClick()
+
+        activity.window.decorView.findButtons()
+            .first { it.text.contains("系统默认") }
+            .performClick()
+
+        val selected = activity.getSharedPreferences(PowerVoiceConfig.PREFS_NAME, 0)
+            .getString(PowerVoiceConfig.PREF_KEY_TARGET_PROVIDER_ID, null)
+        assertEquals("system_default", selected)
+        assertTrue(activity.window.decorView.visibleText().contains("当前目标：系统默认（不映射）"))
+    }
+
+    @Test
     fun `clicking sms entry opens sms config subpage`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()

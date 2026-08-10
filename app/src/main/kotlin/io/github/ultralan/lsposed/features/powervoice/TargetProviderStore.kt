@@ -7,6 +7,7 @@ import io.github.ultralan.lsposed.core.Config
 import io.github.ultralan.lsposed.core.Log
 
 object TargetProviderStore {
+    const val SYSTEM_DEFAULT_ID = "system_default"
     const val AUTHORITY = "${Config.APPLICATION_ID}.powervoice.targetprovider"
     const val PATH_TARGET_PROVIDER = "target_provider"
     const val COLUMN_PROVIDER_ID = "provider_id"
@@ -27,6 +28,8 @@ object TargetProviderStore {
     fun load(context: Context): String? =
         context.getSharedPreferences(PowerVoiceConfig.PREFS_NAME, Context.MODE_PRIVATE)
             .getString(PowerVoiceConfig.PREF_KEY_TARGET_PROVIDER_ID, null)
+
+    fun isSystemDefault(providerId: String?): Boolean = providerId == SYSTEM_DEFAULT_ID
 
     fun query(context: Context): String? =
         runCatching {

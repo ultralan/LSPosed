@@ -17,4 +17,14 @@ class TargetProviderStoreTest {
 
         assertEquals("tongyi", TargetProviderStore.query(context))
     }
+
+    @Test
+    fun `system default selection persists as an explicit provider marker`() {
+        val context = RuntimeEnvironment.getApplication()
+
+        TargetProviderStore.save(context, TargetProviderStore.SYSTEM_DEFAULT_ID)
+
+        assertEquals(TargetProviderStore.SYSTEM_DEFAULT_ID, TargetProviderStore.query(context))
+        assertEquals(true, TargetProviderStore.isSystemDefault(TargetProviderStore.load(context)))
+    }
 }

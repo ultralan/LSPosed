@@ -29,8 +29,10 @@ object PowerVoiceSystemHooks {
                             Log.e("系统侧启动失败：未找到 Context")
                             return
                         }
+                        val preferredProviderId = preferredProviderId(context)
+                        if (TargetProviderStore.isSystemDefault(preferredProviderId)) return
 
-                        if (!isDuplicateTrigger()) startProvider(context)
+                        if (!isDuplicateTrigger()) startProvider(context, preferredProviderId)
                         policy.markPowerHandled()
                         param.result = null
                     }
@@ -40,8 +42,8 @@ object PowerVoiceSystemHooks {
             .onFailure { Log.e("系统侧未找到类: $className", it) }
     }
 
-    private fun startProvider(context: Context) {
-        val provider = selectProvider(context)
+    private fun startProvider(context: Context, preferredProviderId: String?) {
+        val provider = selectProvider(context, preferredProviderId)
         val intent = PowerVoiceLaunchIntentFactory.create(context, provider) ?: run {
             Log.e("系统侧启动失败：未找到 ${provider.displayName} 启动入口")
             return
@@ -56,9 +58,12 @@ object PowerVoiceSystemHooks {
         }
     }
 
-    private fun selectProvider(context: Context): VoiceAssistantProvider =
+    private fun selectProvider(
+        context: Context,
+        preferredProviderId: String?,
+    ): VoiceAssistantProvider =
         ProviderSelector.select(
-            preferredProviderId = preferredProviderId(context),
+            preferredProviderId = preferredProviderId,
             installedPackageNames = VoiceAssistantProviders.ALL
                 .filter { it.isInstalled(context) }
                 .map { it.packageName }
