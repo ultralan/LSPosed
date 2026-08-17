@@ -7,9 +7,11 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -335,16 +337,31 @@ class MainActivity : Activity() {
         val horizontalPadding = dp(20)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(horizontalPadding, dp(16), horizontalPadding, dp(28))
+            setPadding(horizontalPadding, dp(24), horizontalPadding, dp(28))
             build()
         }
         return ScrollView(this).apply {
             setBackgroundColor(surface)
             isFillViewport = true
             clipToPadding = false
+            setOnApplyWindowInsetsListener { view, insets ->
+                val (topInset, bottomInset) = systemBarInsets(insets)
+                view.setPadding(0, topInset + dp(8), 0, bottomInset)
+                insets
+            }
             addView(content)
+            requestApplyInsets()
         }
     }
+
+    @Suppress("DEPRECATION")
+    private fun systemBarInsets(insets: WindowInsets): Pair<Int, Int> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            bars.top to bars.bottom
+        } else {
+            maxOf(insets.systemWindowInsetTop, insets.displayCutout?.safeInsetTop ?: 0) to insets.systemWindowInsetBottom
+        }
 
     private fun LinearLayout.addHomeHeader() {
         addView(LinearLayout(this@MainActivity).apply {
