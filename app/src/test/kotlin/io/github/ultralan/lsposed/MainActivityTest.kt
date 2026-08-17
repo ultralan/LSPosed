@@ -1,7 +1,5 @@
 package io.github.ultralan.lsposed
 
-import android.widget.Button
-import android.widget.CheckBox
 import android.widget.TextView
 import org.junit.runner.RunWith
 import org.junit.Before
@@ -52,15 +50,16 @@ class MainActivityTest {
     }
 
     @Test
-    fun `home page renders five dashboard tiles`() {
+    fun `home page renders five icon navigation items`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
 
         assertEquals(
             5,
-            activity.window.decorView.findViewsWithTag("dashboard-tile").size,
+            activity.window.decorView.findViewsWithTag("navigation-item").size,
         )
+        assertEquals(5, activity.window.decorView.findViewsWithTag("navigation-icon").size)
     }
 
     @Test
@@ -69,7 +68,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findDashboardTile("应用更新").performClick()
+        activity.window.decorView.findNavigationItem("应用更新").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("当前版本"))
@@ -82,11 +81,11 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findDashboardTile("电源键语音").performClick()
+        activity.window.decorView.findNavigationItem("电源键语音").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("选择目标应用"))
-        assertTrue(text.contains("当前目标"))
+        assertTrue(text.contains("电源键行为"))
     }
 
     @Test
@@ -94,9 +93,8 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        activity.window.decorView.findDashboardTile("电源键语音").performClick()
-        val kimiButton = activity.window.decorView.findButtons()
-            .first { it.text.contains("Kimi") }
+        activity.window.decorView.findNavigationItem("电源键语音").performClick()
+        val kimiButton = activity.window.decorView.findViewWithContentDescription("Kimi")
 
         kimiButton.performClick()
 
@@ -110,16 +108,14 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        activity.window.decorView.findDashboardTile("电源键语音").performClick()
+        activity.window.decorView.findNavigationItem("电源键语音").performClick()
 
-        activity.window.decorView.findButtons()
-            .first { it.text.contains("系统默认") }
-            .performClick()
+        activity.window.decorView.findViewWithContentDescription("系统默认").performClick()
 
         val selected = activity.getSharedPreferences(PowerVoiceConfig.PREFS_NAME, 0)
             .getString(PowerVoiceConfig.PREF_KEY_TARGET_PROVIDER_ID, null)
         assertEquals("system_default", selected)
-        assertTrue(activity.window.decorView.visibleText().contains("当前目标：系统默认（不映射）"))
+        assertTrue(activity.window.decorView.visibleText().contains("不拦截电源键"))
     }
 
     @Test
@@ -128,7 +124,7 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findDashboardTile("短信拦截推送").performClick()
+        activity.window.decorView.findNavigationItem("短信拦截推送").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("短信 Hook"))
@@ -141,10 +137,8 @@ class MainActivityTest {
         val activity = Robolectric.buildActivity(MainActivity::class.java)
             .setup()
             .get()
-        activity.window.decorView.findDashboardTile("短信拦截推送").performClick()
-        activity.window.decorView.findCheckBoxes()
-            .first { it.text.contains("默认飞书机器人") }
-            .performClick()
+        activity.window.decorView.findNavigationItem("短信拦截推送").performClick()
+        activity.window.decorView.findViewWithContentDescription("默认飞书机器人").performClick()
 
         assertEquals(
             emptySet(),
@@ -158,12 +152,12 @@ class MainActivityTest {
             .setup()
             .get()
 
-        activity.window.decorView.findDashboardTile("通知服务").performClick()
+        activity.window.decorView.findNavigationItem("通知服务").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("飞书机器人"))
         assertTrue(text.contains("默认飞书机器人"))
-        assertTrue(text.contains("新增飞书机器人"))
+        assertTrue(text.contains("新增机器人"))
     }
 
     @Test
@@ -173,33 +167,21 @@ class MainActivityTest {
             .get()
         ModuleLogStore.append(activity, "测试", "短信 Hook 捕获：from=10086 body=验证码 123456")
 
-        activity.window.decorView.findDashboardTile("运行日志").performClick()
+        activity.window.decorView.findNavigationItem("运行日志").performClick()
 
         val text = activity.window.decorView.visibleText()
         assertTrue(text.contains("模块日志"))
         assertTrue(text.contains("验证码 123456"))
     }
 
-    private fun android.view.View.findButtons(): List<Button> {
-        val found = mutableListOf<Button>()
-        if (this is Button) found += this
+    private fun android.view.View.findViewWithContentDescription(description: String): android.view.View {
+        if (contentDescription == description) return this
         if (this is android.view.ViewGroup) {
             for (index in 0 until childCount) {
-                found += getChildAt(index).findButtons()
+                runCatching { return getChildAt(index).findViewWithContentDescription(description) }
             }
         }
-        return found
-    }
-
-    private fun android.view.View.findCheckBoxes(): List<CheckBox> {
-        val found = mutableListOf<CheckBox>()
-        if (this is CheckBox) found += this
-        if (this is android.view.ViewGroup) {
-            for (index in 0 until childCount) {
-                found += getChildAt(index).findCheckBoxes()
-            }
-        }
-        return found
+        throw NoSuchElementException("找不到 $description")
     }
 
     private fun android.view.View.findViewsWithTag(tag: String): List<android.view.View> {
@@ -213,8 +195,8 @@ class MainActivityTest {
         return found
     }
 
-    private fun android.view.View.findDashboardTile(title: String): android.view.View =
-        findViewsWithTag("dashboard-tile")
+    private fun android.view.View.findNavigationItem(title: String): android.view.View =
+        findViewsWithTag("navigation-item")
             .first { it.contentDescription?.contains(title) == true }
 
     private fun android.view.View.visibleText(): String {

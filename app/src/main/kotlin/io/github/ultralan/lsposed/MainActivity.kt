@@ -2,7 +2,6 @@ package io.github.ultralan.lsposed
 
 import android.app.Activity
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -12,9 +11,9 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
-import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -97,50 +96,54 @@ class MainActivity : Activity() {
         setContentView(page {
             addHomeHeader()
             addSectionLabel("核心模块")
-            addDashboardRow(
-                DashboardTile(
-                    label = "VOICE",
+            addNavigationItem(
+                NavigationItem(
+                    iconRes = R.drawable.ic_mic,
                     title = "电源键语音",
                     summary = "当前目标：${selectedProviderLabel()}",
-                    backgroundColor = primaryContainer,
-                    labelColor = primary,
+                    iconBackgroundColor = primaryContainer,
+                    iconColor = primary,
                     onClick = { renderPowerVoice() },
                 ),
-                DashboardTile(
-                    label = "SMS",
+            )
+            addNavigationItem(
+                NavigationItem(
+                    iconRes = R.drawable.ic_sms,
                     title = "短信拦截推送",
                     summary = "已连接 ${NotificationConfigStore.loadModuleRobotIds(this@MainActivity, NotificationConfigStore.MODULE_SMS_PUSH).size} 个通道",
-                    backgroundColor = tertiaryContainer,
-                    labelColor = onTertiaryContainer,
+                    iconBackgroundColor = tertiaryContainer,
+                    iconColor = onTertiaryContainer,
                     onClick = { renderSmsPush() },
                 ),
             )
             addSectionLabel("服务与维护")
-            addWideDashboardTile(
-                DashboardTile(
-                    label = "NOTIFY",
+            addNavigationItem(
+                NavigationItem(
+                    iconRes = R.drawable.ic_notifications,
                     title = "通知服务",
                     summary = "${NotificationConfigStore.loadRobots(this@MainActivity).count { it.enabled }} 个机器人正在接收模块事件",
-                    backgroundColor = surfaceContainerHigh,
-                    labelColor = onSurfaceVariant,
+                    iconBackgroundColor = secondaryContainer,
+                    iconColor = primary,
                     onClick = { renderNotificationService() },
                 ),
             )
-            addDashboardRow(
-                DashboardTile(
-                    label = "LOG",
+            addNavigationItem(
+                NavigationItem(
+                    iconRes = R.drawable.ic_history,
                     title = "运行日志",
                     summary = "${ModuleLogStore.load(this@MainActivity).size} 条记录",
-                    backgroundColor = surfaceContainer,
-                    labelColor = onSurfaceVariant,
+                    iconBackgroundColor = surfaceContainerHigh,
+                    iconColor = onSurfaceVariant,
                     onClick = { renderLogs() },
                 ),
-                DashboardTile(
-                    label = "UPDATE",
+            )
+            addNavigationItem(
+                NavigationItem(
+                    iconRes = R.drawable.ic_system_update,
                     title = "应用更新",
                     summary = currentVersionName(),
-                    backgroundColor = secondaryContainer,
-                    labelColor = primary,
+                    iconBackgroundColor = primaryContainer,
+                    iconColor = primary,
                     onClick = { renderUpdate() },
                 ),
             )
@@ -150,19 +153,31 @@ class MainActivity : Activity() {
     private fun renderPowerVoice() {
         currentScreen = Screen.POWER_VOICE
         setContentView(page {
-            addHeader("电源键语音", "选择目标应用")
-            addBodyText(
-                """
-                在 LSPosed 中勾选 android 和目标 AI 应用后，长按电源键会进入已学习的语音通话入口。
-                """.trimIndent(),
+            addHeader("电源键语音", "选择目标应用", R.drawable.ic_mic)
+            addSettingItem(
+                iconRes = R.drawable.ic_settings,
+                title = "当前行为",
+                summary = "长按电源键：${selectedProviderLabel()}",
+                clickable = false,
             )
-            addStatus("当前目标：${selectedProviderLabel()}")
-            addButton("系统默认（不映射）") {
+            addSectionLabel("电源键行为")
+            addSelectableItem(
+                iconRes = R.drawable.ic_power,
+                title = "系统默认",
+                summary = "不拦截电源键，保持系统原样",
+                selected = TargetProviderStore.isSystemDefault(TargetProviderStore.load(this@MainActivity)),
+            ) {
                 saveSystemDefaultTarget()
                 renderPowerVoice()
             }
+            addSectionLabel("目标应用")
             VoiceAssistantProviders.ALL.forEach { provider ->
-                addButton("${provider.displayName} (${provider.packageName})") {
+                addSelectableItem(
+                    iconRes = R.drawable.ic_mic,
+                    title = provider.displayName,
+                    summary = provider.packageName,
+                    selected = TargetProviderStore.load(this@MainActivity) == provider.id,
+                ) {
                     saveTargetProvider(provider)
                     renderPowerVoice()
                 }
@@ -173,16 +188,14 @@ class MainActivity : Activity() {
     private fun renderSmsPush() {
         currentScreen = Screen.SMS_PUSH
         setContentView(page {
-            addHeader("短信拦截推送", "短信 Hook")
-            addStatus("Hook 作用域：com.android.phone")
-            addBodyText(
-                """
-                当前阶段会 hook 系统短信分发入口，收到短信后写入 LSPosed 日志和应用内运行日志。
-
-                测试前请在 LSPosed 中启用本模块，并确认作用域包含 com.android.phone，然后软重启或重启手机。
-                """.trimIndent(),
+            addHeader("短信拦截推送", "短信 Hook", R.drawable.ic_sms)
+            addSettingItem(
+                iconRes = R.drawable.ic_sms,
+                title = "系统短信服务",
+                summary = "作用域：com.android.phone",
+                clickable = false,
             )
-            addBodyText("选择短信模块要推送到的机器人：")
+            addSectionLabel("推送通道")
             addRobotSelection(NotificationConfigStore.MODULE_SMS_PUSH)
         })
     }
@@ -190,12 +203,17 @@ class MainActivity : Activity() {
     private fun renderNotificationService() {
         currentScreen = Screen.NOTIFICATION
         setContentView(page {
-            addHeader("通知服务", "飞书机器人")
+            addHeader("通知服务", "飞书机器人", R.drawable.ic_notifications)
             val robots = NotificationConfigStore.loadRobots(this@MainActivity)
-            addStatus("待重试：${NotificationRetryStore.pendingCount(this@MainActivity)} 条")
-            addBodyText("公共通知服务会被各模块复用。每个模块可以单独选择要推送到哪些机器人。")
+            addSettingItem(
+                iconRes = R.drawable.ic_history,
+                title = "重试队列",
+                summary = "${NotificationRetryStore.pendingCount(this@MainActivity)} 条待发送消息",
+                clickable = false,
+            )
+            addSectionLabel("机器人")
             if (robots.isEmpty()) {
-                addBodyText("暂无通知机器人。")
+                addEmptyState("暂无通知机器人")
             }
             robots.forEach { robot ->
                 addRobotRow(robot)
@@ -207,15 +225,18 @@ class MainActivity : Activity() {
     private fun renderLogs() {
         currentScreen = Screen.LOGS
         setContentView(page {
-            addHeader("运行日志", "模块日志")
+            addHeader("运行日志", "模块日志", R.drawable.ic_history)
             val entries = ModuleLogStore.load(this@MainActivity)
-            addButton("刷新", ButtonTone.FILLED) { renderLogs() }
-            addButton("清空日志", ButtonTone.OUTLINED) {
+            addActionRow(
+                ActionItem(R.drawable.ic_refresh, "刷新日志") { renderLogs() },
+                ActionItem(R.drawable.ic_delete, "清空日志") {
                 ModuleLogStore.clear(this@MainActivity)
                 renderLogs()
-            }
+                },
+            )
+            addSectionLabel("最近记录")
             if (entries.isEmpty()) {
-                addBodyText("暂无日志。收到短信或模块执行动作后会出现在这里。")
+                addEmptyState("暂无运行日志")
             } else {
                 entries.forEach { entry ->
                     addLogLine(entry.displayText())
@@ -227,16 +248,32 @@ class MainActivity : Activity() {
     private fun renderUpdate() {
         currentScreen = Screen.UPDATE
         setContentView(page {
-            addHeader("应用更新", "GitHub Releases")
-            addStatus("当前版本：${currentVersionName()}")
-            addBodyText(updateStatus)
-            addButton("检查更新", ButtonTone.FILLED) { checkForUpdate() }
+            addHeader("应用更新", "GitHub Releases", R.drawable.ic_system_update)
+            addSettingItem(
+                iconRes = R.drawable.ic_system_update,
+                title = "当前版本",
+                summary = currentVersionName(),
+                clickable = false,
+            )
+            addSettingItem(
+                iconRes = R.drawable.ic_history,
+                title = "更新状态",
+                summary = updateStatus,
+                clickable = false,
+            )
+            addPrimaryCommand("检查更新", R.drawable.ic_refresh) { checkForUpdate() }
             availableRelease?.let { release ->
-                addStatus("可用版本：${release.tagName}")
+                addSectionLabel("可用版本")
+                addSettingItem(
+                    iconRes = R.drawable.ic_download,
+                    title = release.tagName,
+                    summary = "已通过 GitHub Releases 获取",
+                    clickable = false,
+                )
                 if (release.releaseNotes.isNotBlank()) {
                     addBodyText(release.releaseNotes)
                 }
-                addButton("下载并安装 ${release.tagName}", ButtonTone.FILLED) {
+                addPrimaryCommand("下载并安装 ${release.tagName}", R.drawable.ic_download) {
                     downloadAndInstall(release)
                 }
             }
@@ -318,18 +355,18 @@ class MainActivity : Activity() {
         )
     }
 
-    private enum class ButtonTone {
-        FILLED,
-        TONAL,
-        OUTLINED,
-    }
-
-    private data class DashboardTile(
-        val label: String,
+    private data class NavigationItem(
+        val iconRes: Int,
         val title: String,
         val summary: String,
-        val backgroundColor: Int,
-        val labelColor: Int,
+        val iconBackgroundColor: Int,
+        val iconColor: Int,
+        val onClick: () -> Unit,
+    )
+
+    private data class ActionItem(
+        val iconRes: Int,
+        val description: String,
         val onClick: () -> Unit,
     )
 
@@ -367,12 +404,10 @@ class MainActivity : Activity() {
         addView(LinearLayout(this@MainActivity).apply {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
-            addView(TextView(this@MainActivity).apply {
-                text = getString(R.string.app_monogram)
-                textSize = 15f
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                setTextColor(onPrimary)
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_shield)
+                setColorFilter(onPrimary)
+                contentDescription = null
                 setBackground(roundedShape(primary, 16))
             }, LinearLayout.LayoutParams(dp(52), dp(52)))
             addView(LinearLayout(this@MainActivity).apply {
@@ -392,54 +427,33 @@ class MainActivity : Activity() {
                 })
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }, spacedParams(dp(20)))
+        addSettingItem(
+            iconRes = R.drawable.ic_shield,
+            title = "模块状态",
+            summary = "配置已加载",
+            clickable = false,
+        )
+    }
+
+    private fun LinearLayout.addHeader(title: String, subtitle: String, iconRes: Int) {
         addView(LinearLayout(this@MainActivity).apply {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            setBackground(roundedShape(tertiaryContainer, 12))
-            addView(TextView(this@MainActivity).apply {
-                text = "模块状态"
-                textSize = 14f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onTertiaryContainer)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(TextView(this@MainActivity).apply {
-                text = "配置已加载"
-                textSize = 14f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onTertiaryContainer)
-            })
-        }, spacedParams(dp(22)))
-    }
-
-    private fun LinearLayout.addTitle(title: String, subtitle: String) {
-        addView(TextView(this@MainActivity).apply {
-            text = title
-            textSize = 26f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(onSurface)
-        })
-        addView(TextView(this@MainActivity).apply {
-            text = subtitle
-            textSize = 14f
-            setTextColor(onSurfaceVariant)
-            setPadding(0, dp(4), 0, dp(20))
-        })
-    }
-
-    private fun LinearLayout.addHeader(title: String, subtitle: String) {
-        addView(LinearLayout(this@MainActivity).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            addView(TextView(this@MainActivity).apply {
-                text = "‹"
-                textSize = 36f
-                gravity = Gravity.CENTER
+            addView(ImageButton(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_arrow_back)
+                setColorFilter(onSurface)
                 contentDescription = "返回"
-                setTextColor(onSurface)
                 setBackground(roundedShape(surfaceContainer, 12))
                 setOnClickListener { renderHome() }
             }, LinearLayout.LayoutParams(dp(44), dp(44)))
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(iconRes)
+                setColorFilter(primary)
+                contentDescription = null
+                setBackground(roundedShape(primaryContainer, 12))
+            }, LinearLayout.LayoutParams(dp(40), dp(40)).apply {
+                leftMargin = dp(8)
+            })
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(12), 0, 0, 0)
@@ -454,7 +468,7 @@ class MainActivity : Activity() {
                     textSize = 13f
                     setTextColor(onSurfaceVariant)
                 })
-            })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }, spacedParams(dp(20)))
     }
 
@@ -468,97 +482,165 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun LinearLayout.addDashboardRow(
-        left: DashboardTile,
-        right: DashboardTile,
-    ) {
+    private fun LinearLayout.addNavigationItem(item: NavigationItem) {
         addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
-            addDashboardTile(
-                tile = left,
-                layoutParams = LinearLayout.LayoutParams(0, dp(164), 1f).apply {
-                    rightMargin = dp(4)
-                },
-            )
-            addDashboardTile(
-                tile = right,
-                layoutParams = LinearLayout.LayoutParams(0, dp(164), 1f).apply {
-                    leftMargin = dp(4)
-                },
-            )
+            tag = "navigation-item"
+            contentDescription = item.title
+            isClickable = true
+            isFocusable = true
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackground(roundedShape(surfaceContainer, 12))
+            setOnClickListener { item.onClick() }
+            addView(ImageView(this@MainActivity).apply {
+                tag = "navigation-icon"
+                setImageResource(item.iconRes)
+                setColorFilter(item.iconColor)
+                contentDescription = null
+                setBackground(roundedShape(item.iconBackgroundColor, 14))
+            }, LinearLayout.LayoutParams(dp(48), dp(48)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), 0, dp(8), 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = item.title
+                    textSize = 17f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(onSurface)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = item.summary
+                    textSize = 13f
+                    maxLines = 2
+                    setTextColor(onSurfaceVariant)
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_chevron_right)
+                setColorFilter(onSurfaceVariant)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(24), dp(24)))
         }, spacedParams(dp(8)))
     }
 
-    private fun LinearLayout.addWideDashboardTile(tile: DashboardTile) {
-        addDashboardTile(
-            tile = tile,
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(132),
-            ).apply {
-                bottomMargin = dp(8)
-            },
-        )
-    }
-
-    private fun LinearLayout.addDashboardTile(
-        tile: DashboardTile,
-        layoutParams: LinearLayout.LayoutParams,
+    private fun LinearLayout.addSettingItem(
+        iconRes: Int,
+        title: String,
+        summary: String,
+        selected: Boolean = false,
+        clickable: Boolean = true,
+        onClick: (() -> Unit)? = null,
     ) {
-        addView(LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            tag = "dashboard-tile"
-            contentDescription = tile.title
-            isClickable = true
-            isFocusable = true
-            setPadding(dp(16), dp(15), dp(16), dp(14))
-            setBackground(roundedShape(tile.backgroundColor, 12))
-            setOnClickListener { tile.onClick() }
-            addView(TextView(this@MainActivity).apply {
-                text = tile.label
-                textSize = 11f
-                typeface = Typeface.DEFAULT_BOLD
-                letterSpacing = 0f
-                setTextColor(tile.labelColor)
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = tile.title
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                maxLines = 2
-                setTextColor(onSurface)
-                setPadding(0, dp(7), 0, 0)
-            })
-            addView(View(this@MainActivity), LinearLayout.LayoutParams(1, 0, 1f))
-            addView(TextView(this@MainActivity).apply {
-                text = tile.summary
-                textSize = 13f
-                maxLines = 2
-                setTextColor(onSurfaceVariant)
-            })
-        }, layoutParams)
-    }
-
-    private fun LinearLayout.addStatus(text: String) {
         addView(LinearLayout(this@MainActivity).apply {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            setBackground(roundedShape(primaryContainer, 12))
+            isClickable = clickable
+            isFocusable = clickable
+            contentDescription = title
+            setBackground(roundedShape(if (selected) primaryContainer else surfaceContainer, 12))
+            onClick?.let { setOnClickListener { it() } }
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(iconRes)
+                setColorFilter(if (selected) onPrimaryContainer else onSurfaceVariant)
+                contentDescription = null
+                setBackground(roundedShape(if (selected) primaryContainer else surfaceContainerHigh, 12))
+            }, LinearLayout.LayoutParams(dp(40), dp(40)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, dp(8), 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 16f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(if (selected) onPrimaryContainer else onSurface)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = summary
+                    textSize = 13f
+                    maxLines = 2
+                    setTextColor(if (selected) onPrimaryContainer else onSurfaceVariant)
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            if (selected || clickable) {
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(if (selected) R.drawable.ic_check else R.drawable.ic_chevron_right)
+                    setColorFilter(if (selected) onPrimaryContainer else onSurfaceVariant)
+                    contentDescription = null
+                }, LinearLayout.LayoutParams(dp(24), dp(24)))
+            }
+        }, spacedParams(dp(8)))
+    }
+
+    private fun LinearLayout.addSelectableItem(
+        iconRes: Int,
+        title: String,
+        summary: String,
+        selected: Boolean,
+        onClick: () -> Unit,
+    ) {
+        addSettingItem(iconRes, title, summary, selected, clickable = true, onClick = onClick)
+    }
+
+    private fun LinearLayout.addEmptyState(text: String) {
+        addView(TextView(this@MainActivity).apply {
+            this.text = text
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(onSurfaceVariant)
+            setPadding(dp(16), dp(24), dp(16), dp(24))
+            setBackground(roundedShape(surfaceContainer, 12))
+        }, spacedParams(dp(8)))
+    }
+
+    private fun LinearLayout.addActionRow(vararg actions: ActionItem) {
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            actions.forEachIndexed { index, action ->
+                addView(ImageButton(this@MainActivity).apply {
+                    setImageResource(action.iconRes)
+                    setColorFilter(if (index == 0) primary else errorColor)
+                    contentDescription = action.description
+                    setBackground(roundedShape(if (index == 0) primaryContainer else errorContainer, 12))
+                    setOnClickListener { action.onClick() }
+                }, LinearLayout.LayoutParams(dp(48), dp(48)).apply {
+                    if (index > 0) leftMargin = dp(8)
+                })
+            }
+        }, spacedParams(dp(16)))
+    }
+
+    private fun LinearLayout.addPrimaryCommand(
+        label: String,
+        iconRes: Int,
+        onClick: () -> Unit,
+    ) {
+        addView(LinearLayout(this@MainActivity).apply {
+            gravity = Gravity.CENTER
+            orientation = LinearLayout.HORIZONTAL
+            isClickable = true
+            isFocusable = true
+            contentDescription = label
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setBackground(roundedShape(primary, 12))
+            setOnClickListener { onClick() }
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(iconRes)
+                setColorFilter(onPrimary)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(22), dp(22)))
             addView(TextView(this@MainActivity).apply {
-                this.text = "状态"
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onPrimaryContainer)
-            }, LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.WRAP_CONTENT))
-            addView(TextView(this@MainActivity).apply {
-                this.text = text
+                text = label
                 textSize = 14f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onPrimaryContainer)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        })
-        addSpacer(dp(12))
+                setTextColor(onPrimary)
+                setPadding(dp(8), 0, 0, 0)
+            })
+        }, spacedParams(dp(12)))
     }
 
     private fun LinearLayout.addBodyText(text: String) {
@@ -575,53 +657,75 @@ class MainActivity : Activity() {
         val selected = NotificationConfigStore.loadModuleRobotIds(this@MainActivity, moduleId)
         val robots = NotificationConfigStore.loadRobots(this@MainActivity)
         if (robots.isEmpty()) {
-            addBodyText("暂无通知机器人，请先在通知服务中新增飞书机器人。")
+            addEmptyState("暂无通知机器人")
             return
         }
         robots.forEach { robot ->
-            addView(CheckBox(this@MainActivity).apply {
-                text = "${robot.name}${if (robot.enabled) "" else "（已禁用）"}"
-                isChecked = robot.id in selected
-                isAllCaps = false
-                textSize = 15f
-                setTextColor(onSurface)
-                buttonTintList = ColorStateList.valueOf(primary)
-                setPadding(dp(4), dp(6), dp(4), dp(6))
-                setOnCheckedChangeListener { _, checked ->
-                    val current = NotificationConfigStore.loadModuleRobotIds(this@MainActivity, moduleId)
-                    val next = if (checked) current + robot.id else current - robot.id
-                    NotificationConfigStore.saveModuleRobotIds(this@MainActivity, moduleId, next)
-                    ModuleLogStore.append(this@MainActivity, "通知服务", "短信模块通知目标已更新：${next.size} 个机器人")
-                }
-            }, spacedParams(dp(4)))
+            addSelectableItem(
+                iconRes = R.drawable.ic_notifications,
+                title = robot.name,
+                summary = if (robot.enabled) "已启用" else "已停用",
+                selected = robot.id in selected,
+            ) {
+                val current = NotificationConfigStore.loadModuleRobotIds(this@MainActivity, moduleId)
+                val next = if (robot.id in current) current - robot.id else current + robot.id
+                NotificationConfigStore.saveModuleRobotIds(this@MainActivity, moduleId, next)
+                ModuleLogStore.append(this@MainActivity, "通知服务", "短信模块通知目标已更新：${next.size} 个机器人")
+                renderSmsPush()
+            }
         }
     }
 
     private fun LinearLayout.addRobotRow(robot: NotificationRobot) {
         addView(LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             setBackground(roundedShape(surfaceContainer, 12))
-            addView(TextView(this@MainActivity).apply {
-                text = robot.name
-                textSize = 17f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(onSurface)
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = "${robot.type.name.lowercase()} / ${if (robot.enabled) "启用" else "停用"}"
-                textSize = 13f
-                setTextColor(onSurfaceVariant)
-                setPadding(0, dp(4), 0, dp(10))
-            })
-            addButton(if (robot.enabled) "停用" else "启用", ButtonTone.TONAL) {
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_notifications)
+                setColorFilter(primary)
+                contentDescription = null
+                setBackground(roundedShape(secondaryContainer, 12))
+            }, LinearLayout.LayoutParams(dp(40), dp(40)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, dp(8), 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = robot.name
+                    textSize = 16f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(onSurface)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = "飞书 / ${if (robot.enabled) "已启用" else "已停用"}"
+                    textSize = 13f
+                    setTextColor(onSurfaceVariant)
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ImageButton(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_power)
+                setColorFilter(primary)
+                contentDescription = if (robot.enabled) "停用 ${robot.name}" else "启用 ${robot.name}"
+                setBackground(roundedShape(secondaryContainer, 12))
+                setOnClickListener {
                 NotificationConfigStore.upsertRobot(this@MainActivity, robot.copy(enabled = !robot.enabled))
                 renderNotificationService()
-            }
-            addButton("删除", ButtonTone.OUTLINED) {
+                }
+            }, LinearLayout.LayoutParams(dp(44), dp(44)))
+            addView(ImageButton(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_delete)
+                setColorFilter(errorColor)
+                contentDescription = "删除 ${robot.name}"
+                setBackground(roundedShape(errorContainer, 12))
+                setOnClickListener {
                 NotificationConfigStore.deleteRobot(this@MainActivity, robot.id)
                 renderNotificationService()
-            }
+                }
+            }, LinearLayout.LayoutParams(dp(44), dp(44)).apply {
+                leftMargin = dp(8)
+            })
         }, spacedParams(dp(8)))
     }
 
@@ -644,16 +748,16 @@ class MainActivity : Activity() {
             setPadding(dp(14), 0, dp(14), 0)
             setBackground(roundedShape(surfaceContainerHigh, 12))
         }
-        addSectionLabel("新增飞书机器人")
+        addSectionLabel("新增机器人")
         addView(nameInput, inputParams())
         addView(webhookInput, inputParams())
-        addButton("保存飞书机器人", ButtonTone.FILLED) {
+        addPrimaryCommand("添加飞书机器人", R.drawable.ic_add) {
             val name = nameInput.text.toString().trim().ifBlank { "飞书机器人" }
             val webhook = webhookInput.text.toString().trim()
             if (webhook.isBlank()) {
                 ModuleLogStore.append(this@MainActivity, "通知服务", "飞书机器人保存失败：webhook 为空")
                 renderNotificationService()
-                return@addButton
+                return@addPrimaryCommand
             }
             NotificationConfigStore.upsertRobot(
                 this@MainActivity,
@@ -679,42 +783,6 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
             setBackground(roundedShape(surfaceContainer, 8))
         }, spacedParams(dp(6)))
-    }
-
-    private fun LinearLayout.addButton(
-        text: String,
-        tone: ButtonTone = ButtonTone.TONAL,
-        onClick: () -> Unit,
-    ) {
-        val backgroundColor = when (tone) {
-            ButtonTone.FILLED -> primary
-            ButtonTone.TONAL -> secondaryContainer
-            ButtonTone.OUTLINED -> surface
-        }
-        val textColor = when (tone) {
-            ButtonTone.FILLED -> onPrimary
-            ButtonTone.TONAL -> onPrimaryContainer
-            ButtonTone.OUTLINED -> errorColor
-        }
-        addView(Button(this@MainActivity).apply {
-            this.text = text
-            isAllCaps = false
-            textSize = 14f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            minHeight = dp(48)
-            setTextColor(textColor)
-            background = roundedShape(
-                color = backgroundColor,
-                radius = 12,
-                strokeColor = if (tone == ButtonTone.OUTLINED) errorColor else null,
-            )
-            setOnClickListener { onClick() }
-        }, spacedParams(dp(8)))
-    }
-
-    private fun LinearLayout.addSpacer(height: Int) {
-        addView(View(this@MainActivity), LinearLayout.LayoutParams(1, height))
     }
 
     private fun saveTargetProvider(provider: VoiceAssistantProvider) {
@@ -756,11 +824,10 @@ class MainActivity : Activity() {
             bottomMargin = dp(8)
         }
 
-    private fun roundedShape(color: Int, radius: Int, strokeColor: Int? = null): GradientDrawable =
+    private fun roundedShape(color: Int, radius: Int): GradientDrawable =
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
-            strokeColor?.let { setStroke(dp(1), it) }
         }
 
     private fun dp(value: Int): Int =
