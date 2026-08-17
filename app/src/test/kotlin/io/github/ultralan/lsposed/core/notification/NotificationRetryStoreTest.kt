@@ -50,7 +50,7 @@ class NotificationRetryStoreTest {
         assertEquals(1, firstResult.failed)
         assertEquals(1, firstResult.pending)
         assertEquals(1, pending.attempts)
-        assertEquals(nowMillis + 30_000L, pending.nextAttemptAtMillis)
+        assertEquals(nowMillis + 5_000L, pending.nextAttemptAtMillis)
 
         val retryResult = NotificationRetryProcessor.process(
             context,

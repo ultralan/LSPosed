@@ -121,7 +121,7 @@ object NotificationRetryStore {
 
 object NotificationRetryProcessor {
     private val lock = Any()
-    private val retryDelaysMillis = longArrayOf(30_000L, 120_000L, 600_000L, 1_800_000L)
+    private val retryDelaysMillis = longArrayOf(5_000L, 10_000L, 20_000L, 40_000L)
 
     fun process(
         context: Context,
