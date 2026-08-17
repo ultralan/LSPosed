@@ -8,7 +8,10 @@ import io.github.ultralan.lsposed.core.Config
 import io.github.ultralan.lsposed.core.ModuleLogStore
 
 class NotificationEventProvider : ContentProvider() {
-    override fun onCreate(): Boolean = true
+    override fun onCreate(): Boolean {
+        context?.let { NotificationRetryScheduler.processAsync(it) }
+        return true
+    }
 
     override fun query(
         uri: Uri,
@@ -32,30 +35,30 @@ class NotificationEventProvider : ContentProvider() {
         )
 
         if (values.getAsBoolean(COLUMN_DRY_RUN) == true) {
-            val result = NotificationDispatchResult(sent = 1, failed = 0, skippedDisabled = 0, skippedUnselected = 0)
+            val result = NotificationRetryResult(sent = 1, failed = 0, skipped = 0, pending = 0)
             logResult(appContext, event, result)
             return uri
         }
 
-        Thread({
-            val result = NotificationDispatcher.dispatch(appContext, event)
+        val taskIds = NotificationRetryStore.enqueueSelectedTargets(appContext, event)
+        NotificationRetryScheduler.processAsync(appContext, taskIds) { result ->
             logResult(appContext, event, result)
-        }, "LSPosedNotificationDispatcher").start()
+        }
         return uri
     }
 
     private fun logResult(
         context: android.content.Context,
         event: NotificationEvent,
-        result: NotificationDispatchResult,
+        result: NotificationRetryResult,
     ) {
         ModuleLogStore.append(
             context,
             "通知服务",
-            if (result.sent == 0 && result.failed == 0) {
+            if (result.sent == 0 && result.failed == 0 && result.pending == 0) {
                 "通知未发送：${event.title}，模块未选择启用机器人"
             } else {
-                "通知发送完成：${event.title}，成功 ${result.sent}，失败 ${result.failed}，跳过禁用 ${result.skippedDisabled}"
+                "通知发送完成：${event.title}，成功 ${result.sent}，失败 ${result.failed}，待重试 ${result.pending}"
             },
         )
     }

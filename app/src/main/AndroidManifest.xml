@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
@@ -50,6 +51,18 @@
             android:name=".core.notification.NotificationEventProvider"
             android:authorities="io.github.ultralan.lsposed.notification.events"
             android:exported="true" />
+
+        <receiver
+            android:name=".core.notification.NotificationRetryReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".core.notification.NotificationRetryBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name=".core.update.UpdateApkContentProvider"

@@ -3,13 +3,16 @@ package io.github.ultralan.lsposed.core.notification
 import android.content.Context
 
 object NotificationDispatcher {
+    fun send(robot: NotificationRobot, event: NotificationEvent): Boolean =
+        when (robot.type) {
+            NotificationRobotType.FEISHU -> FeishuWebhookNotifier.send(robot, event)
+        }
+
     fun dispatch(
         context: Context,
         event: NotificationEvent,
         sender: (NotificationRobot, NotificationEvent) -> Boolean = { robot, notificationEvent ->
-            when (robot.type) {
-                NotificationRobotType.FEISHU -> FeishuWebhookNotifier.send(robot, notificationEvent)
-            }
+            send(robot, notificationEvent)
         },
     ): NotificationDispatchResult {
         val selectedIds = NotificationConfigStore.loadModuleRobotIds(context, event.moduleId)

@@ -67,6 +67,7 @@ object NotificationConfigStore {
 
     fun clear(context: Context) {
         prefs(context).edit().clear().commit()
+        NotificationRetryStore.clear(context)
     }
 
     fun createRobotId(): String = "robot_${System.currentTimeMillis()}"

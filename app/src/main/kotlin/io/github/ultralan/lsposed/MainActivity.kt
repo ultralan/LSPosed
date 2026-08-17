@@ -18,6 +18,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import io.github.ultralan.lsposed.core.ModuleLogStore
 import io.github.ultralan.lsposed.core.notification.NotificationConfigStore
+import io.github.ultralan.lsposed.core.notification.NotificationRetryScheduler
+import io.github.ultralan.lsposed.core.notification.NotificationRetryStore
 import io.github.ultralan.lsposed.core.notification.NotificationRobot
 import io.github.ultralan.lsposed.core.notification.NotificationRobotType
 import io.github.ultralan.lsposed.core.update.AppUpdateClient
@@ -67,6 +69,7 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         ReadablePreferences.makeTargetProviderPreferencesReadable(this)
+        NotificationRetryScheduler.processAsync(this)
         renderHome()
     }
 
@@ -187,6 +190,7 @@ class MainActivity : Activity() {
         setContentView(page {
             addHeader("通知服务", "飞书机器人")
             val robots = NotificationConfigStore.loadRobots(this@MainActivity)
+            addStatus("待重试：${NotificationRetryStore.pendingCount(this@MainActivity)} 条")
             addBodyText("公共通知服务会被各模块复用。每个模块可以单独选择要推送到哪些机器人。")
             if (robots.isEmpty()) {
                 addBodyText("暂无通知机器人。")
